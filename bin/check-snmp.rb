@@ -39,12 +39,10 @@ class CheckSNMP < Sensu::Plugin::Check::CLI
          default: '1.3.6.1.4.1.2021.10.1.3.1'
 
   option :warning,
-         short: '-w warning',
-         default: '10'
+         short: '-w warning'
 
   option :critical,
-         short: '-c critical',
-         default: '20'
+         short: '-c critical'
 
   option :match,
          short: '-m match',
@@ -100,7 +98,7 @@ class CheckSNMP < Sensu::Plugin::Check::CLI
     response.each_varbind do |vb|
       if config[:match]
         if vb.value.to_s =~ /#{config[:match]}/
-          ok
+          ok vb.value
         else
           critical "Value: #{vb.value} failed to match Pattern: #{config[:match]}"
         end
@@ -111,11 +109,13 @@ class CheckSNMP < Sensu::Plugin::Check::CLI
                         vb.value
                       end
 
-        critical 'Critical state detected' if snmp_value.to_s.to_i.send(symbol, config[:critical].to_s.to_i)
+        ok snmp_value unless config[:warning] || config[:critical]
+
+        critical snmp_value if snmp_value.to_s.to_i.send(symbol, config[:critical].to_s.to_i)
         # #YELLOW
-        warning 'Warning state detected' if snmp_value.to_s.to_i.send(symbol, config[:warning].to_s.to_i) && !snmp_value.to_s.to_i.send(symbol, config[:critical].to_s.to_i) # rubocop:disable LineLength
+        warning snmp_value if snmp_value.to_s.to_i.send(symbol, config[:warning].to_s.to_i) && !snmp_value.to_s.to_i.send(symbol, config[:critical].to_s.to_i) # rubocop:disable LineLength
         unless snmp_value.to_s.to_i.send(symbol, config[:warning].to_s.to_i)
-          ok 'All is well!'
+          ok snmp_value
         end
       end
     end
